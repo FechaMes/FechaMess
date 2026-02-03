@@ -103,23 +103,57 @@ function showTab(id,btn){document.querySelectorAll('section').forEach(s=>s.style
 function save(){localStorage.setItem('fechames_final',JSON.stringify(state))}
 
 function salvarRenda(){
-  state.renda = Number(renda.value);
-  const pct = Number(percentInvest.value)||0;
-  state.investAuto = state.renda * (pct/100);
+  const rendaInput = document.getElementById('renda');
+  const percentInput = document.getElementById('percentInvest');
+
+  const rendaValor = Number(rendaInput.value);
+  if(!rendaValor || rendaValor <= 0){
+    alert('Informe uma renda válida');
+    return;
+  }
+
+  state.renda = rendaValor;
+  const pct = Number(percentInput.value) || 0;
+  state.investAuto = rendaValor * (pct / 100);
+
   save();
   render();
 }
 
-function addGasto(){const nome=nomeGasto.value;const valor=Number(valorGasto.value);const cat=categoria.value;if(!valor||!nome)return;state.gastos.push({nome,valor,cat});nomeGasto.value='';valorGasto.value='';save();render()}
+function addGasto(){
+  const nome = document.getElementById('nomeGasto').value;
+  const valor = Number(document.getElementById('valorGasto').value);
+  const cat = document.getElementById('categoria').value;
+  if(!nome || !valor || valor<=0){ alert('Preencha corretamente o gasto'); return; }
+  state.gastos.push({nome,valor,cat});
+  document.getElementById('nomeGasto').value='';
+  document.getElementById('valorGasto').value='';
+  save();
+  render();
+}
 
-function addMeta(){state.metas.push({nome:nomeMeta.value,valor:Number(valorMeta.value)});nomeMeta.value='';valorMeta.value='';save();render()}
+function addMeta(){
+  const nome = document.getElementById('nomeMeta').value;
+  const valor = Number(document.getElementById('valorMeta').value);
+  if(!nome || !valor || valor<=0){ alert('Preencha corretamente a meta'); return; }
+  state.metas.push({nome,valor});
+  document.getElementById('nomeMeta').value='';
+  document.getElementById('valorMeta').value='';
+  save();
+  render();
+}
 
-function resetarTudo(){if(!confirm('Apagar tudo?'))return;state={renda:0,gastos:[],metas:[]};save();render()}
+function resetarTudo(){
+  if(!confirm('Apagar tudo?'))return;
+  state={renda:0,investAuto:0,gastos:[],metas:[]};
+  save();
+  render();
+}
 
 function render(){
   const totalGastos = state.gastos.filter(g=>!['Investimentos','Reserva'].includes(g.cat)).reduce((s,g)=>s+g.valor,0);
   const investManual = state.gastos.filter(g=>['Investimentos','Reserva'].includes(g.cat)).reduce((s,g)=>s+g.valor,0);
-  const invest = investManual + (state.investAuto||0);(g=>['Investimentos','Reserva'].includes(g.cat)).reduce((s,g)=>s+g.valor,0);
+  const invest = investManual + (state.investAuto || 0);
   const saldo = state.renda - totalGastos - invest;
 
   rendaView.innerText=`R$ ${state.renda.toFixed(2)}`;
