@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>FechaMês • Controle Financeiro Inteligente</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%2338bdf8'/%3E%3Cpath d='M18 36c6-10 22-10 28 0' stroke='%23031a2f' stroke-width='4' fill='none'/%3E%3C/svg%3E" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg-deep:#031a2f; --bg-ocean:#0b6fa4; --card:#ffffff;
+      --text:#0f172a; --muted:#64748b; --danger:#dc2626; --warn:#f59e0b; --ok:#16a34a;
+    }
+    *{box-sizing:border-box;font-family:Inter,Arial,sans-serif}
+    body{margin:0;min-height:100vh;background:linear-gradient(160deg,var(--bg-deep),var(--bg-ocean));display:grid;grid-template-columns:240px 1fr;color:white}
+    .sidebar{padding:18px;background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.05));border-right:1px solid rgba(255,255,255,.08)}
+    .brand{display:flex;gap:12px;align-items:center;margin-bottom:20px}
+    .logo{width:46px;height:46px}
+    .menu button{width:100%;margin:6px 0;padding:10px;border-radius:10px;border:0;cursor:pointer;background:rgba(255,255,255,.12);color:white;text-align:left}
+    .menu button.active{background:rgba(255,255,255,.3)}
+    .main{padding:22px}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .kpi{background:rgba(255,255,255,.15);padding:14px;border-radius:14px}
+    .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-top:16px}
+    .card{background:var(--card);color:var(--text);border-radius:16px;padding:16px}
+    input,select,button{padding:10px;border-radius:10px;border:1px solid #e5e7eb}
+    button.primary{background:var(--bg-ocean);color:white;border:0;cursor:pointer}
+    .alert{background:#fee2e2;color:#7f1d1d;padding:10px;border-radius:10px;margin-top:10px}
+    .warn{background:#ffedd5;color:#7c2d12;padding:10px;border-radius:10px;margin-top:10px}
+    .ok{background:#dcfce7;color:#14532d;padding:10px;border-radius:10px;margin-top:10px}
+    .list div{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e5e7eb}
+    @media(max-width:900px){body{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#38bdf8"/><path d="M18 36c6-10 22-10 28 0" stroke="#031a2f" stroke-width="4" fill="none"/></svg>
+    <h2>FechaMês</h2>
+  </div>
+  <div class="menu">
+    <button class="active" onclick="showTab('dashboard',this)">🏠 Dashboard</button>
+    <button onclick="showTab('gastos',this)">➕ Gastos</button>
+    <button onclick="showTab('metas',this)">🎯 Metas</button>
+    <button onclick="resetarTudo()">🗑 Reiniciar</button>
+  </div>
+</aside>
+
+<main class="main">
+<section id="dashboard">
+  <div class="kpis">
+    <div class="kpi">Renda<br><strong id="rendaView">R$0</strong></div>
+    <div class="kpi">Gastos<br><strong id="gastosView">R$0</strong></div>
+    <div class="kpi">Invest./Reserva<br><strong id="invView">R$0</strong></div>
+    <div class="kpi">Saldo<br><strong id="saldoView">R$0</strong></div>
+  </div>
+
+  <div class="grid">
+    <div class="card" style="height:320px"><canvas id="grafico"></canvas><div id="status"></div></div>
+    <div class="card">
+      <strong>Configuração</strong>
+      <input id="renda" type="number" placeholder="Renda mensal" />
+      <input id="percentInvest" type="number" placeholder="% da renda para investir" />
+      <button class="primary" onclick="salvarRenda()">Salvar renda</button>
+      <p class="muted" style="margin-top:8px">A porcentagem será automaticamente separada todo mês.</p>
+    </div>
+  </div>
+</section>
+
+<section id="gastos" style="display:none">
+  <div class="card">
+    <strong>Novo gasto</strong>
+    <input id="nomeGasto" placeholder="Nome (ex: Internet)" />
+    <input id="valorGasto" type="number" placeholder="Valor" />
+    <select id="categoria">
+      <option>Essencial</option><option>Fast food</option><option>Festas</option>
+      <option>Cartão</option><option>Transporte</option><option>Assinaturas</option>
+      <option>Investimentos</option><option>Reserva</option><option>Outros</option>
+    </select>
+    <button class="primary" onclick="addGasto()">Adicionar</button>
+    <div class="list" id="lista"></div>
+  </div>
+</section>
+
+<section id="metas" style="display:none">
+  <div class="card">
+    <strong>Metas</strong>
+    <input id="nomeMeta" placeholder="Nome da meta" />
+    <input id="valorMeta" type="number" placeholder="Valor" />
+    <button class="primary" onclick="addMeta()">Adicionar meta</button>
+    <div class="list" id="listaMetas"></div>
+  </div>
+</section>
+</main>
+
+<script>
+let state = JSON.parse(localStorage.getItem('fechames_final')) || { renda:0, investAuto:0, gastos:[], metas:[] };
+let chart;
+
+function showTab(id,btn){document.querySelectorAll('section').forEach(s=>s.style.display='none');document.getElementById(id).style.display='block';document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
+function save(){localStorage.setItem('fechames_final',JSON.stringify(state))}
+
+function salvarRenda(){
+  state.renda = Number(renda.value);
+  const pct = Number(percentInvest.value)||0;
+  state.investAuto = state.renda * (pct/100);
+  save();
+  render();
+}
+
+function addGasto(){const nome=nomeGasto.value;const valor=Number(valorGasto.value);const cat=categoria.value;if(!valor||!nome)return;state.gastos.push({nome,valor,cat});nomeGasto.value='';valorGasto.value='';save();render()}
+
+function addMeta(){state.metas.push({nome:nomeMeta.value,valor:Number(valorMeta.value)});nomeMeta.value='';valorMeta.value='';save();render()}
+
+function resetarTudo(){if(!confirm('Apagar tudo?'))return;state={renda:0,gastos:[],metas:[]};save();render()}
+
+function render(){
+  const totalGastos = state.gastos.filter(g=>!['Investimentos','Reserva'].includes(g.cat)).reduce((s,g)=>s+g.valor,0);
+  const investManual = state.gastos.filter(g=>['Investimentos','Reserva'].includes(g.cat)).reduce((s,g)=>s+g.valor,0);
+  const invest = investManual + (state.investAuto||0);(g=>['Investimentos','Reserva'].includes(g.cat)).reduce((s,g)=>s+g.valor,0);
+  const saldo = state.renda - totalGastos - invest;
+
+  rendaView.innerText=`R$ ${state.renda.toFixed(2)}`;
+  gastosView.innerText=`R$ ${totalGastos.toFixed(2)}`;
+  invView.innerText=`R$ ${invest.toFixed(2)}`;
+  saldoView.innerText=`R$ ${saldo.toFixed(2)}`;
+
+  status.innerHTML = saldo<0 ? '<div class="alert">Modo sobrevivência ativo</div>' : saldo<state.renda*0.15 ? '<div class="warn">Margem apertada</div>' : '<div class="ok">Situação controlada</div>';
+
+  const ctx=grafico.getContext('2d'); if(chart)chart.destroy();
+  chart = new Chart(ctx,{
+    type:'pie',
+    data:{
+      labels:['Gastos','Investimentos','Saldo'],
+      datasets:[{
+        data:[totalGastos, invest, Math.max(saldo,0)],
+        backgroundColor:['#ef4444','#3b82f6','#22c55e']
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false}
+  });(ctx,{type:'pie',data:{labels:['Gastos','Investimentos','Saldo'],datasets:[{data:[totalGastos,invest,Math.max(saldo,0)]}]}});
+
+  lista.innerHTML=''; state.gastos.slice().reverse().forEach(g=>{lista.innerHTML+=`<div><span>${g.nome} (${g.cat})</span><strong>R$ ${g.valor.toFixed(2)}</strong></div>`});
+
+  listaMetas.innerHTML=''; state.metas.forEach(m=>{listaMetas.innerHTML+=`<div><span>${m.nome}</span><strong>R$ ${m.valor.toFixed(2)}</strong></div>`});
+}
+
+renda.value = state.renda;
+render();
+</script>
+</body>
+</html>
