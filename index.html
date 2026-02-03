@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>FechaMês • Controle Financeiro Inteligente</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%2338bdf8'/%3E%3Cpath d='M18 36c6-10 22-10 28 0' stroke='%23031a2f' stroke-width='4' fill='none'/%3E%3C/svg%3E" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -14,7 +13,7 @@
     }
     *{box-sizing:border-box;font-family:Inter,Arial,sans-serif}
     body{margin:0;min-height:100vh;background:linear-gradient(160deg,var(--bg-deep),var(--bg-ocean));display:grid;grid-template-columns:240px 1fr;color:white}
-    .sidebar{padding:18px;background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.05));border-right:1px solid rgba(255,255,255,.08)}
+    .sidebar{padding:18px;background:rgba(0,0,0,.25)}
     .brand{display:flex;gap:12px;align-items:center;margin-bottom:20px}
     .logo{width:46px;height:46px}
     .menu button{width:100%;margin:6px 0;padding:10px;border-radius:10px;border:0;cursor:pointer;background:rgba(255,255,255,.12);color:white;text-align:left}
@@ -37,7 +36,7 @@
 
 <aside class="sidebar">
   <div class="brand">
-    <svg class="logo" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#38bdf8"/><path d="M18 36c6-10 22-10 28 0" stroke="#031a2f" stroke-width="4" fill="none"/></svg>
+    <svg class="logo" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#38bdf8"/></svg>
     <h2>FechaMês</h2>
   </div>
   <div class="menu">
@@ -51,28 +50,30 @@
 <main class="main">
 <section id="dashboard">
   <div class="kpis">
-    <div class="kpi">Renda<br><strong id="rendaView">R$0</strong></div>
-    <div class="kpi">Gastos<br><strong id="gastosView">R$0</strong></div>
-    <div class="kpi">Invest./Reserva<br><strong id="invView">R$0</strong></div>
-    <div class="kpi">Saldo<br><strong id="saldoView">R$0</strong></div>
+    <div class="kpi">Renda<br><strong id="rendaView">R$ 0,00</strong></div>
+    <div class="kpi">Gastos<br><strong id="gastosView">R$ 0,00</strong></div>
+    <div class="kpi">Investimentos<br><strong id="invView">R$ 0,00</strong></div>
+    <div class="kpi">Saldo<br><strong id="saldoView">R$ 0,00</strong></div>
   </div>
 
   <div class="grid">
-    <div class="card" style="height:320px"><canvas id="grafico"></canvas><div id="status"></div></div>
+    <div class="card" style="height:320px">
+      <canvas id="grafico"></canvas>
+      <div id="status"></div>
+    </div>
     <div class="card">
-      <strong>Configuração</strong>
-      <input id="renda" type="number" placeholder="Renda mensal" />
-      <input id="percentInvest" type="number" placeholder="% da renda para investir" />
+      <strong>Configuração da renda</strong><br><br>
+      <input id="rendaInput" type="number" placeholder="Renda mensal" />
+      <input id="percentInvestInput" type="number" placeholder="% para investir" />
       <button class="primary" onclick="salvarRenda()">Salvar renda</button>
-      <p class="muted" style="margin-top:8px">A porcentagem será automaticamente separada todo mês.</p>
     </div>
   </div>
 </section>
 
 <section id="gastos" style="display:none">
   <div class="card">
-    <strong>Novo gasto</strong>
-    <input id="nomeGasto" placeholder="Nome (ex: Internet)" />
+    <strong>Novo gasto</strong><br><br>
+    <input id="nomeGasto" placeholder="Nome do gasto" />
     <input id="valorGasto" type="number" placeholder="Valor" />
     <select id="categoria">
       <option>Essencial</option><option>Fast food</option><option>Festas</option>
@@ -86,7 +87,7 @@
 
 <section id="metas" style="display:none">
   <div class="card">
-    <strong>Metas</strong>
+    <strong>Metas</strong><br><br>
     <input id="nomeMeta" placeholder="Nome da meta" />
     <input id="valorMeta" type="number" placeholder="Valor" />
     <button class="primary" onclick="addMeta()">Adicionar meta</button>
@@ -96,92 +97,90 @@
 </main>
 
 <script>
-let state = JSON.parse(localStorage.getItem('fechames_final')) || { renda:0, investAuto:0, gastos:[], metas:[] };
+let state = JSON.parse(localStorage.getItem('fechames_ok')) || { renda:0, investPct:0, gastos:[], metas:[] };
 let chart;
 
-function showTab(id,btn){document.querySelectorAll('section').forEach(s=>s.style.display='none');document.getElementById(id).style.display='block';document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
-function save(){localStorage.setItem('fechames_final',JSON.stringify(state))}
+function showTab(id,btn){
+  document.querySelectorAll('section').forEach(s=>s.style.display='none');
+  document.getElementById(id).style.display='block';
+  document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function salvar(){ localStorage.setItem('fechames_ok', JSON.stringify(state)); }
 
 function salvarRenda(){
-  const rendaInput = document.getElementById('renda');
-  const percentInput = document.getElementById('percentInvest');
+  const renda = Number(document.getElementById('rendaInput').value);
+  const pct = Number(document.getElementById('percentInvestInput').value) || 0;
 
-  const rendaValor = Number(rendaInput.value);
-  if(!rendaValor || rendaValor <= 0){
-    alert('Informe uma renda válida');
-    return;
-  }
+  if(renda <= 0){ alert('Renda inválida'); return; }
 
-  state.renda = rendaValor;
-  const pct = Number(percentInput.value) || 0;
-  state.investAuto = rendaValor * (pct / 100);
-
-  save();
+  state.renda = renda;
+  state.investPct = pct;
+  salvar();
   render();
 }
 
 function addGasto(){
-  const nome = document.getElementById('nomeGasto').value;
-  const valor = Number(document.getElementById('valorGasto').value);
-  const cat = document.getElementById('categoria').value;
-  if(!nome || !valor || valor<=0){ alert('Preencha corretamente o gasto'); return; }
+  const nome = nomeGasto.value.trim();
+  const valor = Number(valorGasto.value);
+  const cat = categoria.value;
+  if(!nome || valor<=0){ alert('Gasto inválido'); return; }
   state.gastos.push({nome,valor,cat});
-  document.getElementById('nomeGasto').value='';
-  document.getElementById('valorGasto').value='';
-  save();
-  render();
+  nomeGasto.value=''; valorGasto.value='';
+  salvar(); render();
 }
 
 function addMeta(){
-  const nome = document.getElementById('nomeMeta').value;
-  const valor = Number(document.getElementById('valorMeta').value);
-  if(!nome || !valor || valor<=0){ alert('Preencha corretamente a meta'); return; }
+  const nome = nomeMeta.value.trim();
+  const valor = Number(valorMeta.value);
+  if(!nome || valor<=0){ alert('Meta inválida'); return; }
   state.metas.push({nome,valor});
-  document.getElementById('nomeMeta').value='';
-  document.getElementById('valorMeta').value='';
-  save();
-  render();
+  nomeMeta.value=''; valorMeta.value='';
+  salvar(); render();
 }
 
 function resetarTudo(){
-  if(!confirm('Apagar tudo?'))return;
-  state={renda:0,investAuto:0,gastos:[],metas:[]};
-  save();
-  render();
+  if(!confirm('Deseja apagar tudo?')) return;
+  state = { renda:0, investPct:0, gastos:[], metas:[] };
+  salvar(); render();
 }
 
 function render(){
-  const totalGastos = state.gastos.filter(g=>!['Investimentos','Reserva'].includes(g.cat)).reduce((s,g)=>s+g.valor,0);
+  const gastosNormais = state.gastos.filter(g=>!['Investimentos','Reserva'].includes(g.cat)).reduce((s,g)=>s+g.valor,0);
   const investManual = state.gastos.filter(g=>['Investimentos','Reserva'].includes(g.cat)).reduce((s,g)=>s+g.valor,0);
-  const invest = investManual + (state.investAuto || 0);
-  const saldo = state.renda - totalGastos - invest;
+  const investAuto = state.renda * (state.investPct/100);
+  const invest = investManual + investAuto;
+  const saldo = state.renda - gastosNormais - invest;
 
-  rendaView.innerText=`R$ ${state.renda.toFixed(2)}`;
-  gastosView.innerText=`R$ ${totalGastos.toFixed(2)}`;
-  invView.innerText=`R$ ${invest.toFixed(2)}`;
-  saldoView.innerText=`R$ ${saldo.toFixed(2)}`;
+  rendaView.innerText = `R$ ${state.renda.toFixed(2)}`;
+  gastosView.innerText = `R$ ${gastosNormais.toFixed(2)}`;
+  invView.innerText = `R$ ${invest.toFixed(2)}`;
+  saldoView.innerText = `R$ ${saldo.toFixed(2)}`;
 
   status.innerHTML = saldo<0 ? '<div class="alert">Modo sobrevivência ativo</div>' : saldo<state.renda*0.15 ? '<div class="warn">Margem apertada</div>' : '<div class="ok">Situação controlada</div>';
 
-  const ctx=grafico.getContext('2d'); if(chart)chart.destroy();
-  chart = new Chart(ctx,{
+  if(chart) chart.destroy();
+  chart = new Chart(document.getElementById('grafico'),{
     type:'pie',
     data:{
       labels:['Gastos','Investimentos','Saldo'],
-      datasets:[{
-        data:[totalGastos, invest, Math.max(saldo,0)],
-        backgroundColor:['#ef4444','#3b82f6','#22c55e']
-      }]
+      datasets:[{ data:[gastosNormais, invest, Math.max(saldo,0)] }]
     },
     options:{responsive:true,maintainAspectRatio:false}
-  });(ctx,{type:'pie',data:{labels:['Gastos','Investimentos','Saldo'],datasets:[{data:[totalGastos,invest,Math.max(saldo,0)]}]}});
+  });
 
-  lista.innerHTML=''; state.gastos.slice().reverse().forEach(g=>{lista.innerHTML+=`<div><span>${g.nome} (${g.cat})</span><strong>R$ ${g.valor.toFixed(2)}</strong></div>`});
+  lista.innerHTML='';
+  state.gastos.slice().reverse().forEach(g=>{
+    lista.innerHTML += `<div><span>${g.nome} (${g.cat})</span><strong>R$ ${g.valor.toFixed(2)}</strong></div>`;
+  });
 
-  listaMetas.innerHTML=''; state.metas.forEach(m=>{listaMetas.innerHTML+=`<div><span>${m.nome}</span><strong>R$ ${m.valor.toFixed(2)}</strong></div>`});
+  listaMetas.innerHTML='';
+  state.metas.forEach(m=>{
+    listaMetas.innerHTML += `<div><span>${m.nome}</span><strong>R$ ${m.valor.toFixed(2)}</strong></div>`;
+  });
 }
 
-renda.value = state.renda;
 render();
 </script>
 </body>
